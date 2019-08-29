@@ -68,7 +68,7 @@ pub fn main() void {
   const readCode = c.read(clientHandle, @ptrCast(?*c_void, &buffer[0]), 1024);
   warn("message: {}", buffer);
   
-  const sendCode = c.send(clientHandle, c"hello world", 10, 0);
+  const sendCode = c.send(clientHandle, c"HTTP/1.1 200 OK\nContent-Length: 5\n\nhello", 43, 0);
 
 
 
