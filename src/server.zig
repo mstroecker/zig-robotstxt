@@ -8,15 +8,31 @@ const c = @cImport({
   @cInclude("errno.h");
   @cInclude("string.h");
   @cInclude("errno-access.h");
-  @cInclude("stdio.h");
 });
 
-fn onError(what: []const u8, code: i32) void {
-    const stringPtr = c.strerror(c.get_errno());
-    warn("{} ", what);
-    const t = c.printf(c"failed %d message: %s\n", code, stringPtr);
-    std.process.exit(1);
+fn cStringToString(str: [*]u8) []u8 {
+  const len = c.strlen(str);
+  return str[0..len];
 }
+
+fn getFirstLine(str: []u8) []u8 {
+  var i:u32 = 0;
+  while (str[i] != '\n') {
+    i = i + 1;
+  }
+  return str[0..i];
+}
+
+fn onError(what: []const u8, code: i32) void {
+  onErrorNoExit(what, code);
+  std.process.exit(1);
+}
+
+fn onErrorNoExit(what: []const u8, code: i32) void {
+    const message = cStringToString(c.strerror(c.get_errno()));
+    warn("Command '{}' failed with code {}. Message: {s}\n", what, code, message);
+}
+
 
 pub fn main() void {
 
@@ -47,7 +63,6 @@ pub fn main() void {
 
   const bindCode = c.bind(fd, @ptrCast([*c]const c.sockaddr, &address),
     @sizeOf(c.sockaddr_in));
-
   if (bindCode != 0) {
     onError("bind", bindCode);
   }
@@ -56,21 +71,34 @@ pub fn main() void {
   if (listenCode != 0) {
     onError("listen", listenCode);
   }
-  var addrlen:c_uint = @sizeOf(c.sockaddr_in);
-  const clientHandle = c.accept(fd, @ptrCast([*c] c.sockaddr, &address),
-    &addrlen);
 
-  if (clientHandle < 0) {
-    onError("accept", clientHandle);
+  while (true) {
+    var addrlen:c_uint = @sizeOf(c.sockaddr_in);
+    const clientHandle = c.accept(fd, @ptrCast([*c] c.sockaddr, &address),
+      &addrlen);
+
+    if (clientHandle < 0) {
+      onErrorNoExit("accept", clientHandle);
+    }
+  
+    var buffer = [_]u8 {0} ** 1024;
+    const readCode = c.read(clientHandle, @ptrCast(?*c_void, &buffer[0]), 1024);
+
+    const line = getFirstLine(cStringToString(&buffer));
+    warn("Access: {}\n", line);
+
+    const robotstxt =
+        \\HTTP/1.1 200 OK
+        \\Content-Length: 26
+        \\
+        \\User-agent: *
+        \\Disallow: /
+        \\
+    ;
+    const bytesSent = c.send(clientHandle, &robotstxt, robotstxt.len, 0);
+
+    if (bytesSent < 0) {
+      onErrorNoExit("send", @intCast(i32, bytesSent));
+    }
   }
-  
-  var buffer = [_]u8 {0} ** 1024;
-  const readCode = c.read(clientHandle, @ptrCast(?*c_void, &buffer[0]), 1024);
-  warn("message: {}", buffer);
-  
-  const sendCode = c.send(clientHandle, c"HTTP/1.1 200 OK\nContent-Length: 5\n\nhello", 43, 0);
-
-
-
-
 }
