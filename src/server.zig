@@ -16,11 +16,24 @@ fn cStringToString(str: [*]u8) []u8 {
 }
 
 fn getFirstLine(str: []u8) []u8 {
+    if (str.len == 0) {
+        return str;
+    }
     var i: u32 = 0;
-    while (str[i] != '\n') {
+    while (i < str.len and str[i] != '\n') {
         i = i + 1;
     }
-    return str[0..i];
+    return str[0..i-1];
+}
+
+fn getUserAgentLine(str: []u8) []u8 {
+    var i: u32 = 0;
+    var searchStr = "User-Agent";
+    while (searchStr.len + i < str.len 
+           and !std.mem.eql(u8, str[i..i + searchStr.len], searchStr)) {
+        i = i + 1;
+    }
+    return getFirstLine(str[i..]);
 }
 
 fn onError(what: []const u8, code: i32) void {
@@ -54,7 +67,7 @@ pub fn main() void {
         .sin_family = c.AF_INET,
         .sin_addr = inAddr,
         .sin_port = c.htons(8080),
-        .sin_zero = [_]u8{ 0, 0, 0, 0, 0, 0, 0, 0 },
+        .sin_zero = [_]u8{0} ** 8,
     };
 
     const bindCode = c.bind(fd, @ptrCast([*c]const c.sockaddr, &address), @sizeOf(c.sockaddr_in));
@@ -89,8 +102,14 @@ pub fn main() void {
             continue;
         }
 
-        const line = getFirstLine(cStringToString(&buffer));
-        warn("Access: {}\n", line);
+        if (readCode == 0) {
+            continue;
+        }
+
+        const bufStr = cStringToString(&buffer);
+        const line = getFirstLine(bufStr);
+        const userAgent = getUserAgentLine(bufStr);
+        warn("Access: {} | {}\n", line, userAgent);
 
         const robotstxt =
             \\HTTP/1.1 200 OK
