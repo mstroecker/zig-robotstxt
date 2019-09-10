@@ -70,14 +70,24 @@ pub fn main() void {
     while (true) {
         var addrlen: c_uint = @sizeOf(c.sockaddr_in);
         const clientHandle = c.accept(fd, @ptrCast([*c]c.sockaddr, &address), &addrlen);
-        defer _ = c.close(clientHandle);
+        defer {
+            const closeCode = c.close(clientHandle);
+            if (closeCode < 0) {
+                onErrorNoExit("close", closeCode);
+            }
+        }
 
         if (clientHandle < 0) {
             onErrorNoExit("accept", clientHandle);
+            continue;
         }
 
         var buffer = [_]u8{0} ** 1024;
         const readCode = c.read(clientHandle, @ptrCast(?*c_void, &buffer[0]), 1024);
+        if (readCode < 0) {
+            onErrorNoExit("read", @intCast(i32, readCode));
+            continue;
+        }
 
         const line = getFirstLine(cStringToString(&buffer));
         warn("Access: {}\n", line);
@@ -91,7 +101,6 @@ pub fn main() void {
             \\
         ;
         const bytesSent = c.send(clientHandle, &robotstxt, robotstxt.len, 0);
-
         if (bytesSent < 0) {
             onErrorNoExit("send", @intCast(i32, bytesSent));
         }
