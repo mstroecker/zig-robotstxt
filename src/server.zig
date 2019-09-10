@@ -70,6 +70,7 @@ pub fn main() void {
     while (true) {
         var addrlen: c_uint = @sizeOf(c.sockaddr_in);
         const clientHandle = c.accept(fd, @ptrCast([*c]c.sockaddr, &address), &addrlen);
+        defer _ = c.close(clientHandle);
 
         if (clientHandle < 0) {
             onErrorNoExit("accept", clientHandle);
