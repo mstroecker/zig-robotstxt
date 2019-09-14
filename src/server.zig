@@ -8,7 +8,10 @@ const c = @cImport({
     @cInclude("errno.h");
     @cInclude("string.h");
     @cInclude("errno-access.h");
+    @cInclude("signal.h");
 });
+
+pub const SIG_ERR = @intToPtr(extern fn (c_int) void, std.math.maxInt(usize));
 
 fn cStringToString(str: [*]u8) []u8 {
     const len = c.strlen(str);
@@ -46,7 +49,20 @@ fn onErrorNoExit(what: []const u8, code: i32) void {
     warn("Command '{}' failed with code {}. Message: {s}\n", what, code, message);
 }
 
+extern fn onSignal(signo: c_int) void {
+    if (signo == c.SIGINT) {
+        warn("Received signal 'SIGINT'. Exiting..");
+        std.process.exit(0);
+    } else {
+        warn("Received unknown signal {}.", signo);
+    }
+}
+
 pub fn main() void {
+    if (c.signal(c.SIGINT, onSignal) == SIG_ERR) {
+        onError("signal", @intCast(i32, @ptrToInt(SIG_ERR)));
+    }
+
     const fd = c.socket(c.AF_INET, @enumToInt(c.SOCK_STREAM), 0);
     if (fd == 0) {
         onError("socket", fd);
