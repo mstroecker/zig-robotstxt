@@ -14,8 +14,5 @@ RUN /zig/*/zig build -Drelease-small=true && strip zig-cache/bin/robotstxt
 # ------ APP ------
 
 FROM scratch
-
-# Please tell me how to statically link this
-COPY --from=builder /lib/ld-musl-x86_64.so.1 /lib/ld-musl-x86_64.so.1
 COPY --from=builder /build/zig-cache/bin/robotstxt / 
 CMD ["/robotstxt"]

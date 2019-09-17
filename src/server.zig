@@ -63,7 +63,8 @@ pub fn main() void {
         onError("signal", @intCast(i32, @ptrToInt(SIG_ERR)));
     }
 
-    const fd = c.socket(c.AF_INET, @enumToInt(c.SOCK_STREAM), 0);
+    // const fd = c.socket(c.AF_INET, @enumToInt(c.SOCK_STREAM), 0); // glibc
+    const fd = c.socket(c.AF_INET, c.SOCK_STREAM, 0); // musl 
     if (fd == 0) {
         onError("socket", fd);
     }
