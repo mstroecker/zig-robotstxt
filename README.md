@@ -2,8 +2,9 @@
 
 [![Build Status](https://travis-ci.org/mstroecker/zig-robotstxt.svg?branch=master)](https://travis-ci.org/mstroecker/zig-robotstxt)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mstroecker/zig-robotstxt)](https://hub.docker.com/r/mstroecker/zig-robotstxt)
+[![](https://images.microbadger.com/badges/image/mstroecker/zig-robotstxt.svg)](https://microbadger.com/images/mstroecker/zig-robotstxt "Get your own image badge on microbadger.com")
 
-This project implements a small(~370 KB Docker Image) and lightweight http-server, just serving a disallow-robots.txt file using the Zig programming language(https://ziglang.org/).
+This project implements a small(5.7 KB) and lightweight http-server, just serving a disallow-robots.txt file using the Zig programming language(https://ziglang.org/).
 
 Run using docker run:
 
@@ -17,7 +18,7 @@ Compose configuration example with traefik:
 version: '3'
 services:
   traefik:
-    image: traefik
+    image: traefik:1.7
     command:
       - "--docker"
       - "--docker.watch=true"
