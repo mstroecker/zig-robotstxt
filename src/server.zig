@@ -1,5 +1,6 @@
 const std = @import("std");
 const warn = std.debug.warn;
+const TypeId = @import("builtin").TypeId;
 
 const c = @cImport({
     @cInclude("sys/socket.h");
@@ -11,33 +12,8 @@ const c = @cImport({
     @cInclude("signal.h");
 });
 
-pub const SIG_ERR = @intToPtr(extern fn (c_int) void, std.math.maxInt(usize));
-
-fn cStringToString(str: [*]u8) []u8 {
-    const len = c.strlen(str);
-    return str[0..len];
-}
-
-fn getFirstLine(str: []u8) []u8 {
-    if (str.len == 0) {
-        return str;
-    }
-    var i: u32 = 0;
-    while (i < str.len and str[i] != '\n') {
-        i = i + 1;
-    }
-    return str[0..i-1];
-}
-
-fn getUserAgentLine(str: []u8) []u8 {
-    var i: u32 = 0;
-    var searchStr = "User-Agent";
-    while (searchStr.len + i < str.len 
-           and !std.mem.eql(u8, str[i..i + searchStr.len], searchStr)) {
-        i = i + 1;
-    }
-    return getFirstLine(str[i..]);
-}
+const SIG_ERR = @intToPtr(extern fn (c_int) void, std.math.maxInt(usize));
+const SOCK_STREAM = if (@typeId(@typeOf(c.SOCK_STREAM)) == TypeId.Enum) @enumToInt(c.SOCK_STREAM) else c.SOCK_STREAM;
 
 fn onError(what: []const u8, code: i32) void {
     onErrorNoExit(what, code);
@@ -45,16 +21,16 @@ fn onError(what: []const u8, code: i32) void {
 }
 
 fn onErrorNoExit(what: []const u8, code: i32) void {
-    const message = cStringToString(c.strerror(c.get_errno()));
-    warn("Command '{}' failed with code {}. Message: {s}\n", what, code, message);
+    const message = std.mem.toSliceConst(u8, c.strerror(c.get_errno()));
+    warn("Command '{}' failed with code {}. Message: {}\n", what, code, message);
 }
 
 extern fn onSignal(signo: c_int) void {
     if (signo == c.SIGINT) {
-        warn("Received signal 'SIGINT'. Exiting..");
+        warn("Received signal 'SIGINT'. Exiting..\n");
         std.process.exit(0);
     } else {
-        warn("Received unknown signal {}.", signo);
+        warn("Received unknown signal {}.\n", signo);
     }
 }
 
@@ -63,8 +39,7 @@ pub fn main() void {
         onError("signal", @intCast(i32, @ptrToInt(SIG_ERR)));
     }
 
-    // const fd = c.socket(c.AF_INET, @enumToInt(c.SOCK_STREAM), 0); // glibc
-    const fd = c.socket(c.AF_INET, c.SOCK_STREAM, 0); // musl 
+    const fd = c.socket(c.AF_INET, SOCK_STREAM, 0);
     if (fd == 0) {
         onError("socket", fd);
     }
@@ -76,7 +51,6 @@ pub fn main() void {
         onError("setsockopt", setSockOptCode);
     }
 
-    // struct sockaddr_in address
     const inAddr = c.in_addr{
         .s_addr = c.INADDR_ANY,
     };
@@ -113,7 +87,7 @@ pub fn main() void {
         }
 
         var buffer = [_]u8{0} ** 1024;
-        const readCode = c.read(clientHandle, @ptrCast(?*c_void, &buffer[0]), 1024);
+        const readCode = c.read(clientHandle, @ptrCast(?*c_void, &buffer[0]), buffer.len);
         if (readCode < 0) {
             onErrorNoExit("read", @intCast(i32, readCode));
             continue;
@@ -123,10 +97,17 @@ pub fn main() void {
             continue;
         }
 
-        const bufStr = cStringToString(&buffer);
-        const line = getFirstLine(bufStr);
-        const userAgent = getUserAgentLine(bufStr);
-        warn("Access: {} | {}\n", line, userAgent);
+        const bufStr = (&buffer)[0..@intCast(usize, readCode)];
+        var lines = std.mem.separate(bufStr, "\r\n");
+        const firstLine = lines.next();
+        var userAgent: []const u8 = "";
+        while (lines.next()) |line| {
+            if (std.mem.startsWith(u8, line, "User-Agent")) {
+                userAgent = line;
+                break;
+            }
+        }
+        warn("Access: {} | {}\n", firstLine, userAgent);
 
         const robotstxt =
             \\HTTP/1.1 200 OK

@@ -11,7 +11,7 @@ pub fn build(b: *Builder) void {
     exe.strip = true;
     exe.single_threaded = true;
     exe.target = Target.parse("x86_64-linux-musl");
-//    exe.target = Target.parse("x86_64-linux-glib");
+    //exe.target = Target.parse("x86_64-linux-libc");
     b.installArtifact(exe);
     const run = b.step("run", "Run the project");
     const run_cmd = exe.run();
