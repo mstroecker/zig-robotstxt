@@ -11,6 +11,64 @@ Run using docker run:
 ```bash
 docker run -p 80:8080 mstroecker/zig-robotstxt
 ```
+## Kubernetes Example
+
+Kubernetes configuration example:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: myservice
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: robotstxt
+  namespace: myservice
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 81
+    targetPort: http 
+    name: http
+  selector:
+    app: robotstxt
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: robotstxt
+  namespace: myservice
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: robotstxt
+  template:
+    metadata:
+      labels:
+        app: robotstxt
+    spec:
+      containers:
+      - name: robotstxt
+        image: mstroecker/zig-robotstxt
+        ports:
+        - containerPort: 8080
+          name: http
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: robotstxt
+  namespace: myservice
+spec:
+  rules:
+    - host: localhost
+      http:
+```
+
+## Docker Compose Example
 
 Compose configuration example with traefik:
 
