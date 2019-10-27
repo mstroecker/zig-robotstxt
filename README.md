@@ -66,6 +66,12 @@ spec:
   rules:
     - host: localhost
       http:
+        paths:
+          - path: /robots.txt
+            backend:
+              serviceName: robotstxt
+              servicePort: http
+
 ```
 
 ## Docker Compose Example
