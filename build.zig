@@ -3,7 +3,7 @@ const builtin = @import("builtin");
 const Builder = std.build.Builder;
 const Target = std.build.Target;
 
-pub fn build(b: *Builder) void {
+pub fn build(b: *Builder) !void {
     const mode = b.standardReleaseOptions();
     const exe = b.addExecutable("robotstxt", "src/server.zig");
     exe.linkSystemLibrary("c");
@@ -11,7 +11,8 @@ pub fn build(b: *Builder) void {
     exe.addIncludeDir("src");
     exe.strip = true;
     exe.single_threaded = true;
-    exe.setTarget(builtin.arch, builtin.os, builtin.abi);
+    exe.setTarget(builtin.arch, builtin.os, try Target.parseAbi("musl"));
+
     //exe.target = Target.parse("x86_64-linux-musl");
     //exe.target = Target.parse("x86_64-linux-libc");
     b.installArtifact(exe);

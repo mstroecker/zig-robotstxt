@@ -11,11 +11,11 @@ script:
 
 before_deploy:
   - docker tag "$IMAGE_NAME" "${IMAGE_NAME}:latest"
-  - docker tag "$IMAGE_NAME" "${IMAGE_NAME}:0.3"
+  - docker tag "$IMAGE_NAME" "${IMAGE_NAME}:0.4"
   - docker login -u "$REGISTRY_USER" -p "$REGISTRY_PASS"
 
 deploy:
   provider: script
-  script: docker push "${IMAGE_NAME}:latest" && docker push "${IMAGE_NAME}:0.3"
+  script: docker push "${IMAGE_NAME}:latest" && docker push "${IMAGE_NAME}:0.4"
   on:
     branch: master
